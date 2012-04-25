@@ -1,0 +1,22 @@
+#specify the executable and job type (Simics is always vanilla in Condor)
+universe = vanilla
+executable = simics_wrapper.sh
+
+#specify requirements for resource running job.
+#Here must have >512MB of memory and simics avaliable
+requirements = HasSimicsAmd64 == TRUE && Memory >= 512
+
+
+#Provide name for the output files. $(Cluster) and $(Proces) are IDs
+Log = simics.$(Cluster).$(Process).log
+Error = simics.$(Cluster).$(Process).err
+Output = simics.$(Cluster).$(Process).out
+
+#Tell condor which files to send and recieve
+should_transfer_files = yes
+when_to_transfer_output = ON_EXIT
+transfer_input_files = time_in_domains_full.simics
+transfer_output_files = screen_dump.out, NoBoostFairness.txt, cr3Changes.txt, MemoryOps.txt 
+
+#Submit
+queue
