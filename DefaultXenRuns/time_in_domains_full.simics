@@ -80,5 +80,6 @@ c 2_000_000_000
 	e.close()
 	print "Done " + str(iter+1) +"%"
 
+write-configuration xen_defaule_3Domu_benches_running_done.config
 exit
 
