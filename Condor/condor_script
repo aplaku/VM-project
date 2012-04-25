@@ -14,9 +14,9 @@ Output = simics.$(Cluster).$(Process).out
 
 #Tell condor which files to send and recieve
 should_transfer_files = yes
-when_to_transfer_output = ON_EXIT
+when_to_transfer_output = ON_EXIT_OR_EVICT
 transfer_input_files = time_in_domains_full.simics
-transfer_output_files = screen_dump.out, NoBoostFairness.txt, cr3Changes.txt, MemoryOps.txt 
+transfer_output_files = screen_dump.out, NoBoostFairness.txt, cr3Changes.txt, MemoryOps.txt
 
 #Submit
 queue

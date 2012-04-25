@@ -1,5 +1,5 @@
 @print "Sending unpause"
-con0.input "xm unpause 1; xm unpause 2; xm unpause 3\n"
+con0.input "xm unpause 1; xm unpause 5; xm unpause 6\n"
 @print "Unpause sent"
 @print "Running for 2mil cycles"
 c 2_000_000_000
@@ -12,7 +12,7 @@ c 2_000_000_000
 @master_start_cycle = SIM_cycle_count(conf.cpu0)
 @current_domain = 0
 
-@f = open('DefaultFairness.txt', 'w')
+@f = open('NoBoostFairness.txt', 'w')
 @d = open('cr3Changes.txt', 'w')
 
 @def hap_callback(user_arg,  cpu, arg):
@@ -45,7 +45,7 @@ c 2_000_000_000
 @print "Setup Cr3 Haps"
 
 
-@e = open('MemoryOps.txt', 'w')
+#@e = open('MemoryOps.txt', 'w')
 @mem_ops = 0
 
 @def memory_trans_callbakc(user_arg, cpu, mem_struct):
@@ -65,7 +65,7 @@ c 2_000_000_000
 	global cr3_changes
 	global mem_ops
 	global cycles_in_domain
-	f = open('DefaultFairness.txt', 'a')	
+	f = open('NoBoostFairness.txt', 'a')	
 	f.write(str(cycles_in_domain))
 	f.close()
 	d = open('cr3Changes.txt', 'a')
@@ -74,6 +74,9 @@ c 2_000_000_000
 	e = open('MemoryOps.txt', 'a')
 	e.write(str(mem_ops))
 	e.close()
+	print str(cycles_in_domain)
+	print str(cr3_changes)
+	print str(mem_ops)
 	print "Done " + str(iter+1) +"%"
 
 exit
