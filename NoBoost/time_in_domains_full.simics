@@ -1,0 +1,85 @@
+@print "Sending unpause"
+con0.input "xm unpause 1; xm unpause 5; xm unpause 6\n"
+@print "Unpause sent"
+@print "Running for 2bil cycles"
+c 2_000_000_000
+
+@print "Setting up Haps handling"
+@total_cycle_count = 0
+@end_cycle = 0
+@cycles_in_domain = {}
+@start_cycle = SIM_cycle_count(conf.cpu0)
+@master_start_cycle = SIM_cycle_count(conf.cpu0)
+@current_domain = 0
+
+@f = open('NoBoostFairness.txt', 'w')
+@d = open('cr3Changes_NB.txt', 'w')
+
+@def hap_callback(user_arg,  cpu, arg):
+	global cycles_in_domain
+	global start_cycle
+	global current_domain
+	ebx = conf.cpu0.ebx
+	end_cycle = SIM_cycle_count(conf.cpu0)
+	if (ebx in cycles_in_domain):
+		cycles_in_domain[ebx] += end_cycle - start_cycle
+	else:
+		cycles_in_domain[ebx] = end_cycle - start_cycle
+	current_domain = ebx
+
+@SIM_hap_add_callback("Core_Magic_Instruction", hap_callback, None)
+@print "Setup Magic instr Hasp"
+
+@cr3_reg_index = SIM_get_register_number(conf.cpu0, "cr3")
+@cr3_changes = {}
+
+@def cr3_hap_callback(user_arg, cpu, reg, val):
+        global cr3_changes
+	global current_domain
+	if (current_domain in cr3_changes):
+                cr3_changes[current_domain] += 1
+        else:
+		cr3_changes[current_domain] = 1
+
+@SIM_hap_add_callback_index("Core_Control_Register_Write", cr3_hap_callback, None, cr3_reg_index)
+@print "Setup Cr3 Haps"
+
+
+@e = open('MemoryOps_NB.txt', 'w')
+@mem_ops = {}
+
+@def memory_trans_callbakc(user_arg, cpu, mem_struct):
+        global mem_ops
+	global current_domain
+        if (current_domain in mem_ops):
+                mem_ops[current_domain] += 1
+        else:
+                mem_ops[current_domain] = 1
+    
+@SIM_hap_add_callback("Core_Device_Access_Memop", memory_trans_callbakc, None)
+
+
+@print "HAPS handling done"
+@print "Running for 500bil cycles"
+@for iter in range(100):
+	SIM_continue(5000000000)
+	global f
+	global d
+	global e
+	global cr3_changes
+	global mem_ops
+	global cycles_in_domain
+	f = open('NoBoostFairness.txt', 'a')	
+	f.write(str(cycles_in_domain) + '\n')
+	f.close()
+	d = open('cr3Changes_NB.txt', 'a')
+	d.write(str(cr3_changes) + '\n')
+	d.close()
+	e = open('MemoryOps_NB.txt', 'a')
+	e.write(str(mem_ops) + '\n') 
+	e.close()
+	print "Done " + str(iter+1) +"%"
+
+write-configuration xen_noBoost_3domU_BenchesRunning_done.config
+exit
+
