@@ -1,0 +1,123 @@
+//Changes to the xen source code. 
+//Changed functions below
+//See comments
+
+static void
+csched_vcpu_wake(struct vcpu *vc)
+{
+    struct csched_vcpu * const svc = CSCHED_VCPU(vc);
+    const unsigned int cpu = vc->processor;
+
+    BUG_ON( is_idle_vcpu(vc) );
+
+    if ( unlikely(per_cpu(schedule_data, cpu).curr == vc) )
+    {
+        CSCHED_STAT_CRANK(vcpu_wake_running);
+        return;
+    }
+    if ( unlikely(__vcpu_on_runq(svc)) )
+    {
+        CSCHED_STAT_CRANK(vcpu_wake_onrunq);
+        return;
+    }
+
+    if ( likely(vcpu_runnable(vc)) )
+        CSCHED_STAT_CRANK(vcpu_wake_runnable);
+    else
+        CSCHED_STAT_CRANK(vcpu_wake_not_runnable);
+
+    /*
+     * We temporarly boost the priority of awaking VCPUs!
+     *
+     * If this VCPU consumes a non negligeable amount of CPU, it
+     * will eventually find itself in the credit accounting code
+     * path where its priority will be reset to normal.
+     *
+     * If on the other hand the VCPU consumes little CPU and is
+     * blocking and awoken a lot (doing I/O for example), its
+     * priority will remain boosted, optimizing it's wake-to-run
+     * latencies.
+     *
+     * This allows wake-to-run latency sensitive VCPUs to preempt
+* more CPU resource intensive VCPUs without impacting overall 
+     * system fairness.
+     *
+     * The one exception is for VCPUs of capped domains unpausing
+     * after earning credits they had overspent. We don't boost
+     * those.
+     */
+
+    /* Aldo Plaku 4/22/12
+     * Testing the affects of turning boost off.
+     * Uncomment to turn back on
+    if ( svc->pri == CSCHED_PRI_TS_UNDER &&
+         !(svc->flags & CSCHED_FLAG_VCPU_PARKED) )
+    {
+        svc->pri = CSCHED_PRI_TS_BOOST;
+    }
+    */
+
+    /* Put the VCPU on the runq and tickle CPUs */
+    __runq_insert(cpu, svc);
+    __runq_tickle(cpu, svc);
+}
+
+
+static void
+csched_runq_sort(unsigned int cpu)
+{
+    struct csched_pcpu * const spc = CSCHED_PCPU(cpu);
+    struct list_head *runq, *elem, *next, *last_under;
+    struct csched_vcpu *svc_elem, *svc_elem_next;
+    unsigned long flags;
+    int sort_epoch;
+    int cred_elem, cred_next;
+
+    sort_epoch = csched_priv.runq_sort;
+    if ( sort_epoch == spc->runq_sort_last )
+        return;
+
+    spc->runq_sort_last = sort_epoch;
+
+    spin_lock_irqsave(&per_cpu(schedule_data, cpu).schedule_lock, flags);
+
+    runq = &spc->runq;
+    elem = runq->next;
+    last_under = runq;
+
+    while ( elem != runq )
+    {
+
+	//Aldo Plaku
+	//Changes to sort by credit
+	//Crude sorting algorith
+
+        next = elem->next;
+        svc_elem = __runq_elem(elem);
+	svc_elem_enxt = __runq_elem(next)
+	cred_ele = atomic_read(svc_elem->credit)
+	cred_next = atomic_read(svc_elem_next->credit)
+
+        if ( svc_elem->pri >= CSCHED_PRI_TS_UNDER )
+        {
+            /* does elem need to move up the runq? */
+            if ( elem->prev != last_under )
+            {
+		//If current has more credits put in front (list_add)
+		if (cred_ele > cred_next) 
+		{
+                	list_del(elem);
+                	list_add(elem, last_under);
+		}
+		//Else add to tail
+		else {
+			list_del(elem);
+                        list_add_tail(elem, last_under);
+		}
+            }
+            last_under = elem;
+        }
+spin_unlock_irqrestore(&per_cpu(schedule_data, cpu).schedule_lock, flags);
+}
+
+
